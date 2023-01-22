@@ -1,0 +1,9 @@
+maven clean
+maven build
+maven package
+
+docker build --platform linux/amd64 -t <container-repository>/abn-pfm-ms:<version> .
+docker push <container-repository>/abn-pfm-ms:<version>
+
+#Update yml files with version then
+kubectl apply -f ./deployment/dev/abn-pfm-ms-deployment.yml
