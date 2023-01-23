@@ -11,6 +11,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -41,6 +42,8 @@ public class ReportFacadeImpl implements ReportFacade {
      * */
     @Override
     public Object getDailyReport(final MultipartFile file, final String outputType) {
+        Assert.notNull(file, "Input file should not be null.");
+        Assert.notNull(outputType, "Output type should not be null.");
         try {
             final ExportStrategy exportStrategy = exportStrategyRegistry.getExportStrategy(outputType);
             final File inputFile = convertToFile(file);
@@ -50,6 +53,8 @@ public class ReportFacadeImpl implements ReportFacade {
             }
         } catch (final ClassNotFoundException e) {
             log.error("Error encountered while retrieving export strategy.", e);
+        } catch (final IllegalArgumentException e) {
+            log.error("Error encountered while processing input file to generate report.", e);
         }
         return null;
     }

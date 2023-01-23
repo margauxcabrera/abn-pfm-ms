@@ -12,16 +12,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.*;
 
-import static au.com.abn.constant.CoreConstants.INPUT_MAPPING_FILE_PATH;
-import static au.com.abn.constant.CoreConstants.SUMMARY_DELIMITER;
+import static au.com.abn.constant.CoreConstants.*;
 
 @Service
 @Log4j2
@@ -49,6 +50,7 @@ public class ReportServiceImpl implements ReportService {
      */
     @Override
     public List<ReportData> getDailyReport(final File inputFile) {
+        Assert.notNull(inputFile, "Input file cannot be null");
         final Map<String, BigDecimal> summary = getSummary(inputFile);
         if (MapUtils.isNotEmpty(summary)) {
             final List<ReportData> reportDataList = new ArrayList<>();
@@ -69,7 +71,8 @@ public class ReportServiceImpl implements ReportService {
      * Get summary based on input file
      * */
     private Map<String, BigDecimal> getSummary(final File inputFile) {
-        final LinkedHashMap<String, Integer> inputMapping = getInputMapping();
+        final LinkedHashMap<String, Integer> inputMapping = getInputMapping(INPUT_MAPPING_FILE_PATH);
+        final LinkedHashMap<String, Integer> inputDecimal = getInputMapping(INPUT_DECIMAL_FILE_PATH);
         // Retrieve configurable list of client and product information keys
         final List<String> clientInformationAttributeList = Arrays.asList(clientInformationAttributes.split(","));
         final List<String> productInformationAttributeList = Arrays.asList(productInformationAttributes.split(","));
@@ -77,14 +80,15 @@ public class ReportServiceImpl implements ReportService {
             final Map<String, BigDecimal> summary = new HashMap<>();
             String input;
             while ((input = br.readLine()) != null) {
-                final InputData inputData = convertInputData(input, inputMapping);
+                final InputData inputData = convertInputData(input, inputMapping, inputDecimal);
                 if (null != inputData) {
                     final String clientInformationKey = getKey(clientInformationAttributeList, inputData, clientInformationDelimiter);
                     final String productInformationKey = getKey(productInformationAttributeList, inputData, productInformationDelimiter);
                     if (StringUtils.isNotBlank(clientInformationKey) && StringUtils.isNotBlank(productInformationKey)) {
                         final BigDecimal quantityLong = new BigDecimal(inputData.getQuantityLong().trim());
                         final BigDecimal quantityShort = new BigDecimal(inputData.getQuantityShort().trim());
-                        final BigDecimal currentTransactionAmount = quantityLong.subtract(quantityShort);
+                        final MathContext mc = new MathContext(2);
+                        final BigDecimal currentTransactionAmount = quantityLong.subtract(quantityShort, mc);
                         BigDecimal transactionAmount = currentTransactionAmount;
                         final String summaryKey = clientInformationKey.concat(SUMMARY_DELIMITER).concat(productInformationKey);
                         // If client and product key combination is already existing in the map
@@ -127,7 +131,8 @@ public class ReportServiceImpl implements ReportService {
     /**
      * Converts string read from the file to InputData for parsing
      * */
-    private InputData convertInputData(final String input, final LinkedHashMap<String, Integer> inputMapping) {
+    private InputData convertInputData(final String input, final LinkedHashMap<String, Integer> inputMapping,
+                                       final LinkedHashMap<String, Integer> inputDecimal) {
         final InputData inputData = new InputData();
         int initialIndex = 0;
         for (Map.Entry<String, Integer> entry : inputMapping.entrySet()) {
@@ -136,8 +141,12 @@ public class ReportServiceImpl implements ReportService {
                         .concat(entry.getKey().substring(1));
                 final Class attributeType = InputData.class.getDeclaredField(entry.getKey()).getType();
                 final Method setMethod = InputData.class.getMethod(setMethodName, attributeType);
-                final String value = input.substring(initialIndex, initialIndex + entry.getValue()).trim();
-                setMethod.invoke(inputData, value);
+                final StringBuilder value = new StringBuilder();
+                value.append(input.substring(initialIndex, initialIndex + entry.getValue()).trim());
+                if (inputDecimal.containsKey(entry.getKey())) {
+                    getDecimalValue(value, inputDecimal.get(entry.getKey()));
+                }
+                setMethod.invoke(inputData, value.toString());
                 initialIndex += entry.getValue();
             } catch (final NoSuchFieldException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                 log.error("Error encountered while converting input data.", e);
@@ -146,15 +155,20 @@ public class ReportServiceImpl implements ReportService {
         return inputData;
     }
 
+    private void getDecimalValue(final StringBuilder attributeValue, final Integer decimalPlaces) {
+        final int index = attributeValue.length() - decimalPlaces;
+        attributeValue.insert(index, ".");
+    }
+
     /**
      * Retrieves configuration that will be used to parse input data
      * */
-    private LinkedHashMap<String, Integer> getInputMapping() {
+    private LinkedHashMap<String, Integer> getInputMapping(final String filePath) {
         final ClassLoader classLoader = getClass().getClassLoader();
         InputStream inputStream;
         LinkedHashMap<String, Integer> inputMapping = null;
         try {
-            inputStream = classLoader.getResourceAsStream(INPUT_MAPPING_FILE_PATH);
+            inputStream = classLoader.getResourceAsStream(filePath);
             final Type mapData = new TypeToken<LinkedHashMap<String, Integer>>() {}.getType();
             final Gson gson = new Gson();
             try (JsonReader reader = new JsonReader(new InputStreamReader(inputStream))) {
@@ -165,4 +179,5 @@ public class ReportServiceImpl implements ReportService {
         }
         return inputMapping;
     }
+
 }

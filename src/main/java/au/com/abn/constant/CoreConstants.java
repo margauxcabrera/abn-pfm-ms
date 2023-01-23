@@ -2,6 +2,7 @@ package au.com.abn.constant;
 
 public interface CoreConstants {
     String INPUT_MAPPING_FILE_PATH = "inputMapping.json";
+    String INPUT_DECIMAL_FILE_PATH = "inputDecimal.json";
     String SUMMARY_DELIMITER = "<=>";
     String CSV_OUTPUT_TYPE = "CSV";
     String JSON_OUTPUT_TYPE = "JSON";

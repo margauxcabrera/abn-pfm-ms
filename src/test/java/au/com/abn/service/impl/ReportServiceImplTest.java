@@ -56,11 +56,22 @@ class ReportServiceImplTest {
     inputMapping.put("recordCode", 3);
     inputMapping.put("clientType", 4);
     inputMapping.put("clientNumber", 4);
-    final InputData inputData = (InputData) getPrivateMethod("convertInputData", String.class, LinkedHashMap.class)
-            .invoke(reportService, inputString, inputMapping);
+    final LinkedHashMap<String, Integer> inputDecimal = new LinkedHashMap<>();
+    inputDecimal.put("clientNumber", 2);
+    final InputData inputData = (InputData) getPrivateMethod("convertInputData", String.class, LinkedHashMap.class, LinkedHashMap.class)
+            .invoke(reportService, inputString, inputMapping, inputDecimal);
     assertEquals("315", inputData.getRecordCode());
     assertEquals("CL", inputData.getClientType());
-    assertEquals("4321", inputData.getClientNumber());
+    assertEquals("43.21", inputData.getClientNumber());
+  }
+
+  @Test
+  void testGetDecimalValue() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("000000000060");
+    final Integer decimalPlaces = 2;
+    getPrivateMethod("getDecimalValue", StringBuilder.class, Integer.class).invoke(reportService, sb, decimalPlaces);
+    assertEquals(sb.toString(), "0000000000.60");
   }
 
   private Method getPrivateMethod(final String methodName, final Class<?>... parameterTypes) throws NoSuchMethodException {
@@ -69,4 +80,5 @@ class ReportServiceImplTest {
     method.setAccessible(true);
     return method;
   }
+
 }
