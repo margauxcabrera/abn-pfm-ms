@@ -9,18 +9,14 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
-import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
-import static au.com.abn.constant.CoreConstants.CSV_OUTPUT_TYPE;
-import static au.com.abn.constant.CoreConstants.CSV_SEPARATOR;
 
 @Component
 @Log4j2
@@ -77,8 +73,8 @@ public class ReportFacadeImpl implements ReportFacade {
     /**
      * Retrieves the extension
      * */
-    private static String getExtensionWithPeriod(String fileName) {
-        String extension = FilenameUtils.getExtension(fileName);
+    private static String getExtensionWithPeriod(final String fileName) {
+        final String extension = FilenameUtils.getExtension(fileName);
         if (StringUtils.isNotEmpty(extension)) {
             return "." + extension;
         }
